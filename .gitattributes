@@ -1,0 +1,4 @@
+* text=auto
+*.bat eol=crlf
+# Force line endings to keep tests reliable
+src/test/resources/samples/* eol=lf
