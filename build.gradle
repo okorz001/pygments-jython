@@ -1,11 +1,12 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'maven-publish'
     id 'com.jfrog.bintray' version '1.8.0'
 }
 
 group = 'org.korz.pygments'
-version = '1.0.0'
+version = '2.0.0'
 
 repositories {
     jcenter()
@@ -24,6 +25,19 @@ test {
     testLogging {
         showStandardStreams true
         exceptionFormat 'full'
+    }
+}
+
+jacoco {
+    toolVersion = '0.7.9'
+}
+
+javadoc {
+    options {
+        links 'https://docs.oracle.com/javase/8/docs/api/'
+        links 'http://www.jython.org/javadoc/'
+        // these classes are not intended to be subclassed
+        showFromPublic()
     }
 }
 

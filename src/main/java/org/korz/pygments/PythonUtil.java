@@ -1,6 +1,7 @@
 package org.korz.pygments;
 
 import org.python.core.Py;
+import org.python.core.PyException;
 import org.python.core.PyObject;
 
 import java.util.ArrayList;
@@ -47,17 +48,40 @@ public class PythonUtil {
      * @return The attribute value, or null if it does not exist.
      */
     public static PyObject get(PyObject o, String... names) {
-        for (String name : names) {
-            o = o.__getattr__(Py.newString(name));
-            if (o == null) {
-                break;
+        try {
+            for (String name : names) {
+                o = o.__getattr__(Py.newString(name));
             }
+            return o;
         }
-        return o;
+        catch (PyException e) {
+            if (e.match(Py.AttributeError)) {
+                return null;
+            }
+            throw e;
+        }
     }
 
     /**
-     * Converts a Python object to an instance of Java class.
+     * Gets an attribute, possibly nested, from a Python object and converts it
+     * to an instance of a Java class.
+     * <p>
+     * This is a convenience method that is equivalent to the following:
+     * <code>toJava(clazz, get(o, names))</code>
+     * @param <T> The desired return type.
+     * @param clazz The desired return type.
+     * @param o The Python object to access.
+     * @param names The attribute names to walk, in order.
+     * @return The attribute value, or null if it does not exist.
+     * @throws ClassCastException If the object cannot be converted to the
+     *                            specified type.
+     */
+    public static <T> T get(Class<T> clazz, PyObject o, String... names) {
+        return toJava(clazz, get(o, names));
+    }
+
+    /**
+     * Converts a Python object to an instance of a Java class.
      * @param <T> The desired return type.
      * @param clazz The desired return type.
      * @param o The Python object to convert.
@@ -84,7 +108,7 @@ public class PythonUtil {
      * @param args The positional arguments.
      * @return The result of the function.
      */
-    public static PyObject call(PyObject func, List<? extends Object> args) {
+    public static PyObject call(PyObject func, List<?> args) {
         return call(func, args, Collections.emptyMap());
     }
 
@@ -95,7 +119,7 @@ public class PythonUtil {
      * @return The result of the function.
      */
     public static PyObject call(PyObject func,
-                                Map<String, ? extends Object> kwargs) {
+                                Map<String, ?> kwargs) {
         return call(func, Collections.emptyList(), kwargs);
     }
 
@@ -107,8 +131,8 @@ public class PythonUtil {
      * @return The result of the function.
      */
     public static PyObject call(PyObject func,
-                                List<? extends Object> args,
-                                Map<String, ? extends Object> kwargs) {
+                                List<?> args,
+                                Map<String, ?> kwargs) {
         // __call__ receives all arguments in a single array, with the
         // positional arguments before the keyword arguments.
         // the second array contains the keys for the keyword arguments.
@@ -117,13 +141,101 @@ public class PythonUtil {
         for (Object arg : args) {
             pyArgs.add(Py.java2py(arg));
         }
-        for (Map.Entry<String, ? extends Object> kwarg : kwargs.entrySet()) {
+        for (Map.Entry<String, ?> kwarg : kwargs.entrySet()) {
             keys.add(kwarg.getKey());
             pyArgs.add(Py.java2py(kwarg.getValue()));
         }
-        return func.__call__(
-                pyArgs.toArray(new PyObject[0]),
-                keys.toArray(new String[0]));
+        return func.__call__(pyArgs.toArray(new PyObject[0]),
+                             keys.toArray(new String[0]));
+    }
+
+    /**
+     * Calls a Python function with no arguments and converts the return value
+     * to an instance of a Java class.
+     * <p>
+     * This is a convenience method that is equivalent to the following:
+     * <code>toJava(clazz, call(func))</code>
+     * @param <T> The desired return type.
+     * @param clazz The desired return type.
+     * @param func The Python function.
+     * @return The result of the function.
+     * @throws ClassCastException If the object cannot be converted to the
+     *                            specified type.
+     */
+    public static <T> T call(Class<T> clazz, PyObject func) {
+        return toJava(clazz, call(func));
+    }
+
+    /**
+     * Calls a Python function with positional arguments and converts the
+     * return value to an instance of a Java class.
+     * <p>
+     * This is a convenience method that is equivalent to the following:
+     * <code>toJava(clazz, call(func, args))</code>
+     * @param <T> The desired return type.
+     * @param clazz The desired return type.
+     * @param func The Python function.
+     * @param args The positional arguments.
+     * @return The result of the function.
+     * @throws ClassCastException If the object cannot be converted to the
+     *                            specified type.
+     */
+    public static <T> T call(Class<T> clazz, PyObject func, List<?> args) {
+        return toJava(clazz, call(func, args));
+    }
+
+    /**
+     * Calls a Python function with keyword arguments and converts the return
+     * value to an instance of a Java class.
+     * <p>
+     * This is a convenience method that is equivalent to the following:
+     * <code>toJava(clazz, call(func, kwargs))</code>
+     * @param <T> The desired return type.
+     * @param clazz The desired return type.
+     * @param func The Python function.
+     * @param kwargs The keyword arguments.
+     * @return The result of the function.
+     * @throws ClassCastException If the object cannot be converted to the
+     *                            specified type.
+     */
+    public static <T> T call(Class<T> clazz,
+                             PyObject func,
+                             Map<String, ?> kwargs) {
+        return toJava(clazz, call(func, kwargs));
+    }
+
+    /**
+     * Calls a Python function with positional and keyword arguments and
+     * converts the return value to an instance of a Java class.
+     * <p>
+     * This is a convenience method that is equivalent to the following:
+     * <code>toJava(clazz, call(func, args, kwargs))</code>
+     * @param <T> The desired return type.
+     * @param clazz The desired return type.
+     * @param func The Python function.
+     * @param args The positional arguments.
+     * @param kwargs The keyword arguments.
+     * @return The result of the function.
+     * @throws ClassCastException If the object cannot be converted to the
+     *                            specified type.
+     */
+    public static <T> T  call(Class<T> clazz,
+                              PyObject func,
+                              List<?> args,
+                              Map<String, ?> kwargs) {
+        return toJava(clazz, call(func, args, kwargs));
+    }
+
+    /**
+     * Returns the message from a wrapped Python exception.
+     * <p>
+     * This method is necessary because PyException instances return null for
+     * {@link PyException#getMessage}.
+     * @param e A wrapped Python exception.
+     * @return The exception message.
+     */
+    public static String getMessage(PyException e) {
+        return get(String.class, e.value, "message");
     }
 
     private PythonUtil() {}

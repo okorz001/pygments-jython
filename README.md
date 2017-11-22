@@ -5,14 +5,36 @@ Thread-safe Java wrapper for [Pygments][pygments] via [Jython][jython]
 [![](https://api.bintray.com/packages/okorz001/maven/pygments-jython/images/download.svg)
 ](https://bintray.com/okorz001/maven/pygments-jython/_latestVersion)
 
+## Releases
+
+`pygments-java` is currently published on JCenter.
+
+The following demonstrates how to use this library in a Gradle build:
+
+```gradle
+plugins {
+    id 'java'
+}
+
+repositories {
+    jcenter()
+}
+
+dependencies {
+    implementation 'org.korz.pygments:pygments-jython:2.0.0'
+}
+```
+
 ## Usage
 
-This library provides a single class, `Pygments`, that can be safely shared
+Complete documentation is available in Javadoc format.
+
+The main entry point, `PygmentsContext`, highlights text and can be shared
 between threads.
 
 ```java
-// Create a Pygments instance with a lexer and formatter.
-Pygments p = Pygments.newBuilder()
+// Create a PygmentsContext instance with a lexer and formatter.
+PygmentsContext p = PygmentsContext.newContext()
     .setLexer("c")
     .setFormatter("html")
     // Set some lexer or formatter options if you want.
@@ -31,30 +53,45 @@ options they support, please consult the official Pygments documentation:
 * [Lexers](http://pygments.org/docs/lexers/)
 * [Formatters](http://pygments.org/docs/formatters/)
 
-## Releases
+### Sharing Lexers and Formatters
 
-`pygments-java` is currently published on Bintray.
+`Lexer` and `Formatter` instances are also thread-safe and it is possible to
+share them between `PygmentsContext` instances.
 
-The following demonstrates how to use this library in a Gradle build:
-
-```gradle
-plugins {
-    id 'java'
-}
-
-repositories {
-    // for pygments-jython
-    maven {
-        url 'https://dl.bintray.com/okorz001/maven/'
-    }
-    // for transitive dependencies
-    jcenter()
-}
-
-dependencies {
-    implementation 'org.korz.pygments:pygments-jython:1.0.0'
-}
+```java
+Lexer l = Lexer.byName("c")
+    // Set some options if you want.
+    .build();
+Formatter f = Formatter.byName("html")
+    // Set some options if you want.
+    .build();
+// ... later ...
+PygmentsContext p = PygmentsContext.newContext()
+    .withLexer(l)
+    .withFormatter(f)
+    .build();
 ```
+
+Using `withLexer` or `withFormatter` allows creating `Lexer` or `Formatter`
+instances with builders other than `Lexer.byName` and `Formatter.byName`.
+
+### Low-Level API
+
+The main classes in his library, `PygmentsContext`, `Lexer`, and `Formatter`,
+are designed to be idiomatic and easy to use in Java. However, it may be easier
+to use the Python API directly in languages with map literals and/or without
+static type checking. The Python API is wrapped in a single class, `Pygments`,
+that simply wraps the interaction with the Python runtime without adding any
+additional abstractions.
+
+```groovy
+def code = "int main(void) { return 0; }"
+def lexer = Pygments.getLexer("c", [:])
+def formatter = Pygments.getFormatter("html", [linenos: "table"])
+def highlighted = Pygments.highlight(code, lexer, formatter)
+```
+
+The idiomatic Java API is implemented directly on top of this low-level API.
 
 ## Why
 
